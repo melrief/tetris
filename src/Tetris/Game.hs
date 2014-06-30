@@ -35,6 +35,9 @@ data CurrentBlock = CB {
 
 $(makeLenses ''CurrentBlock)
 
+instance Show CurrentBlock where
+  show cb = show (view pos cb) ++ " " ++ show (view orien cb) ++ " " ++ show (view shape cb)
+
 initPosAndDir :: Shape -> CurrentBlock
 initPosAndDir initShape = CB {
     _pos   = initBlockCoord
@@ -79,18 +82,36 @@ initGame seed = Game {
                             in Cons (blocks `index` idx) (mkShapesQueue gen')
 
 
-type GameState a = State Game a
+type GameState m = StateT Game m
 
-nextRandomShape :: GameState Shape
+nextRandomShape :: (Monad m) => GameState m Shape
 nextRandomShape = do
   -- maybe could use snd and (<<%=) to do it in one step?
   Cons nextShape shapesQueueTail <- use shapesQueue
   assign shapesQueue shapesQueueTail
   return nextShape
 
+data RotateResult = Rotated Rotation | CannotRotate | BlockToRotateNotFound
+
 -- rotate the current block clockwise and counterwise
-rotate :: Rotation -> GameState ()
-rotate = modify . over (currBlock.traverse.orien) . rotationToFun
+tryToRotateCurrBlock :: (Monad m) => Rotation -> GameState m RotateResult
+tryToRotateCurrBlock rotation = do
+  curr <- use currBlock
+  case curr of
+    Nothing -> return BlockToRotateNotFound -- should be BlockNotFound
+    Just b  -> do
+      let newOrien = rotationToFun rotation $ view orien b
+      let maybeNewPos = rotationToShift rotation newOrien $ view pos b
+      case maybeNewPos of
+        Nothing     -> return CannotRotate
+        Just newPos -> do
+          let b' = set orien newOrien $ set pos newPos $ b
+          case blockCoords b' of
+            -- Cannot rotate
+            Nothing -> return CannotRotate
+            Just _  -> do
+              assign currBlock (Just b')
+              return (Rotated rotation)
 
 -- Declarative way to define the direction possibilities when moving a block.
 -- Each direction can then be converted to functions to be used when really
@@ -117,7 +138,7 @@ data MoveResult = Moved         MoveDirection
 -- Try to move the current block (if there is a current block). Note that this
 -- function can fail to move the block and can eventually merge the block in
 -- the board
-tryToMoveCurrBlock :: MoveDirection -> GameState MoveResult
+tryToMoveCurrBlock :: (Monad m) => MoveDirection -> GameState m MoveResult
 tryToMoveCurrBlock md = do
   curr <- use currBlock
   case curr of
@@ -156,7 +177,7 @@ data MergeResult = MergeResult [Row] | MergeGameOver
   deriving Show
 
 -- Merge the current block and then remove full rows if any
-mergeBlock :: CurrentBlock -> GameState MergeResult
+mergeBlock :: (Monad m) => CurrentBlock -> GameState m MergeResult
 mergeBlock cb = do
   -- merge the block in the current board
   let coords = blockCoords' cb
@@ -186,7 +207,7 @@ instance Show StepResult where
   show (Move    mr) = show mr
 
 -- advance the state of the game
-step :: GameState StepResult
+step :: (Functor m,Monad m) => GameState m StepResult
 step = do
   isOver <- use gameOver
   if isOver

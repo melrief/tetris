@@ -123,24 +123,46 @@ instance DirToFun RightUp Orientation Coord where
 
 
 -- only two ways to rotate a block, clockwise and counterwise
+--
+-- please note that the rotations are reversed because the board is upside down,
+-- ie row Digit Zero is the one at the top of the screen and Twentyone the one
+-- at the bottom
 data Rotation = Clockwise | Counterwise
   deriving (Eq,Show)
 
--- implementation of the rotation
+-- implementation of the rotation on the orientation (note that counterwise and
+-- clockwise are reversed)
 clockwise,counterwise :: Orientation -> Orientation
-clockwise   North = East
-clockwise   East  = South
-clockwise   South = West
-clockwise   West  = North
-counterwise North = West
-counterwise West  = South
-counterwise South = East
-counterwise East  = North
+counterwise North = East
+counterwise East  = South
+counterwise South = West
+counterwise West  = North
+clockwise   North = West
+clockwise   West  = South
+clockwise   South = East
+clockwise   East  = North
 
 -- conversion from the declarative form to the function
 rotationToFun :: Rotation -> Orientation -> Orientation
 rotationToFun Clockwise   = clockwise
 rotationToFun Counterwise = counterwise
+
+-- implementation of the rotation on the head (note that counterwise and
+-- clockwise are reversed)
+clockwiseHeadShift,counterwiseHeadShift :: Orientation -> Coord -> Maybe Coord
+clockwiseHeadShift North c = succColumn c >>= succColumn
+clockwiseHeadShift East  c = succRow    c >>= succRow 
+clockwiseHeadShift South c = predColumn c >>= predColumn
+clockwiseHeadShift West  c = predRow    c >>= predRow
+counterwiseHeadShift   North c = succRow    c >>= succRow
+counterwiseHeadShift   East  c = predColumn c >>= predColumn
+counterwiseHeadShift   South c = predRow    c >>= predRow
+counterwiseHeadShift   West  c = succColumn c >>= succColumn
+
+
+rotationToShift :: Rotation -> Orientation -> Coord -> Maybe Coord
+rotationToShift Clockwise   = clockwiseHeadShift
+rotationToShift Counterwise = counterwiseHeadShift
 
 
 type Board = Set Coord
