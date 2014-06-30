@@ -93,7 +93,10 @@ nextRandomShape = do
 
 data RotateResult = Rotated Rotation | CannotRotate | BlockToRotateNotFound
 
--- rotate the current block clockwise and counterwise
+-- Rotate the current block clockwise or counterwise.
+--
+-- Rotation requires caution: the block can be rotated only if it doesn't exit
+-- the board and if the resultant coordinates are not occupied in the board
 tryToRotateCurrBlock :: (Monad m) => Rotation -> GameState m RotateResult
 tryToRotateCurrBlock rotation = do
   curr <- use currBlock
@@ -107,11 +110,17 @@ tryToRotateCurrBlock rotation = do
         Just newPos -> do
           let b' = set orien newOrien $ set pos newPos $ b
           case blockCoords b' of
-            -- Cannot rotate
-            Nothing -> return CannotRotate
-            Just _  -> do
-              assign currBlock (Just b')
-              return (Rotated rotation)
+            -- Cannot rotate because by rotating the block exits the board
+            Nothing     -> return CannotRotate
+            Just coords -> do
+              boardCoords <- use board
+              if any (`member` boardCoords) coords
+                -- cannot rotate because by rotating the block goes on one or
+                -- more not empty coordinates in the board
+                then return CannotRotate
+                else do
+                  assign currBlock (Just b')
+                  return (Rotated rotation)
 
 -- Declarative way to define the direction possibilities when moving a block.
 -- Each direction can then be converted to functions to be used when really

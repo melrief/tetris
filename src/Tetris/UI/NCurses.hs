@@ -18,9 +18,10 @@ import           Tetris.Game
 
 
 data GuiState = GS {
+  -- the player score
     _score         :: Int
 
-  -- current game speed
+  -- current game speed (related to the score)
   , _speed         :: Int
   -- frame to skip before next update
   , _framesToIgnore :: Int
@@ -38,12 +39,15 @@ initGuiState = GS {
 -- two levels state, first for the gui and the second for the game state
 type TetrisM m a = StateT GuiState (GameState m) a
 
+-- the interval between two game steps
 stepInterval :: Int
-stepInterval = 33000 -- ms, so ~30 fps
+stepInterval = 16666 -- ms, so ~60 fps
 
+-- run the game using a random seed
 runGame :: (Functor m,MonadIO m) => m ()
 runGame = liftIO (randomRIO (0,maxBound)) >>= runGameWithSeed
 
+-- run the game using a given seed
 runGameWithSeed :: (Functor m,MonadIO m) => Int -> m ()
 runGameWithSeed seed = do
   liftIO $ CursesH.start
@@ -65,6 +69,15 @@ instance IsActionResult MoveResult where
 instance IsActionResult RotateResult where
   toActionResult = RotateActionResult
 
+-- utility function to map toActionResult to a gamestate result
+toActionResult' :: (Functor m,Monad m,IsActionResult r) => GameState m r -> TetrisM m ActionResult
+toActionResult' = fmap toActionResult . lift
+
+-- the game loop is the main loop where the game progresses and the user input
+-- is managed.
+--
+-- It roughly consists on creating a thread for managing the input and then
+-- run the real loop where the input is processed and steps are executed.
 gameLoop :: (Functor m,MonadIO m) => TetrisM m ()
 gameLoop = do
 
@@ -72,7 +85,7 @@ gameLoop = do
   keyMVar <- liftIO newEmptyMVar
 
   -- thread getting the input
-  _ <- liftIO $ forkIO $ handleInputThread keyMVar
+  handleInputTId <- liftIO $ forkIO $ handleInputThread keyMVar
 
   -- real gui cycle
   loopUntilEsc keyMVar $ \maybeChar -> do
@@ -98,9 +111,15 @@ gameLoop = do
                  Move (Merged (MergeResult rows)) -> updateSpeedAndScore rows
                  _                                -> return ()
                use speed >>= assign framesToIgnore
+               refreshGui
 
-    lift (use gameOver)
+    lift (use gameOver) -- if gameover then exit the loop
 
+  -- kill the input thread because we don't need it anymore
+  liftIO $ killThread handleInputTId
+
+  -- if the reason for ending the program is "game over", then  print it else
+  -- just exit
   isGameOver <- lift (use gameOver)
 
   -- print game over and wait for user input before exiting
@@ -109,30 +128,37 @@ gameLoop = do
     Curses.mvWAddStr Curses.stdScr 10 0 "  Game Over "
     Curses.mvWAddStr Curses.stdScr 11 0 "$$$$$$$$$$$$"
     Curses.mvWAddStr Curses.stdScr 24 1 "Press any button to exit"
+    Curses.refresh
     Curses.getCh
 
+-- given a list of rows that have been removed because filled with blocks, this
+-- function adds the proper value to the user score and updates the game speed
 updateSpeedAndScore :: (Monad m) => [Row] -> TetrisM m ()
 updateSpeedAndScore rs = do
   let pointsToAdd = case length rs of
-                      0 ->  0
-                      1 ->  1
-                      2 ->  3
-                      3 ->  5
-                      4 ->  9
+                      0 -> 0
+                      1 -> 1
+                      2 -> 3
+                      3 -> 5
+                      4 -> 9
                       _ -> undefined -- this should not happen
   when (pointsToAdd > 0) $ do
     modify $ over score (\x -> x + pointsToAdd)
            . over speed (\x -> max 1 (x - pointsToAdd))
 
+-- the key used to manually exit the game
 escKey :: Key
 escKey = KeyChar 'q'
 
+-- handle the user input until the escKey is pressed
 handleInputThread :: MVar Key -> IO ()
 handleInputThread mvar = do
   c <-  Curses.getCh
   putMVar mvar c
   unless (c == escKey) $ handleInputThread mvar
 
+-- a commodity loop that checks both if esc has been pressed or the action
+-- returned true (that means that the loop should stop)
 loopUntilEsc :: (MonadIO m) => MVar Key -> (Maybe Key -> TetrisM m Bool) -> TetrisM m ()
 loopUntilEsc mvar action = do
   c <- liftIO $ tryTakeMVar mvar
@@ -140,16 +166,20 @@ loopUntilEsc mvar action = do
     isOver <- action c
     unless isOver (loopUntilEsc mvar action)
 
+-- process the user input by changing the game state and return a representation of
+-- the result of the action inside a ActionResult value
 processInputKey :: (Functor m,Monad m) => Maybe Key -> TetrisM m ActionResult
-processInputKey (Just KeyLeft)       = toActionResult `fmap` lift (tryToMoveCurrBlock Left)
-processInputKey (Just KeyRight)      = toActionResult `fmap` lift (tryToMoveCurrBlock Right)
-processInputKey (Just KeyDown)       = toActionResult `fmap` lift (tryToMoveCurrBlock Down)
-processInputKey (Just (KeyChar 'z')) = toActionResult `fmap` lift (tryToRotateCurrBlock Counterwise)
-processInputKey (Just (KeyChar 'x')) = toActionResult `fmap` lift (tryToRotateCurrBlock Clockwise)
+processInputKey (Just KeyLeft)       = toActionResult' $ tryToMoveCurrBlock Left
+processInputKey (Just KeyRight)      = toActionResult' $ tryToMoveCurrBlock Right
+processInputKey (Just KeyDown)       = toActionResult' $ tryToMoveCurrBlock Down
+processInputKey (Just (KeyChar 'z')) = toActionResult' $ tryToRotateCurrBlock Counterwise
+processInputKey (Just (KeyChar 'x')) = toActionResult' $ tryToRotateCurrBlock Clockwise
 processInputKey Nothing              = return NoAction
--- we ignore other keys
+-- we ignore other keys, add here another key to extend keys handled
 processInputKey _                    = return NoAction
 
+-- refresh the graphical ui by erasing the window and "repainting" the state of
+-- the board
 refreshGui :: (Functor m,MonadIO m) => TetrisM m ()
 refreshGui = do
 
@@ -184,19 +214,21 @@ refreshGui = do
     Just    block -> forM_ (blockCoords' block) $ \(row,col) -> 
                        mvAddCh (toInt row) (toInt col+1) (fromIntegral $ ord '+')
 
+
   -- print the speed
-  currSpeed <- use speed
-  liftIO $ Curses.mvWAddStr Curses.stdScr 18 13 $ "Speed: " ++ show currSpeed
+  use speed >>= mvAddStr 18 13 . (++) "Speed: " . show
 
   -- print the score
-  currScore <- use score
-  liftIO $ Curses.mvWAddStr Curses.stdScr 20 13 $ "Score: " ++ show currScore
+  use score >>= mvAddStr 20 13 . (++) "Score: " . show
 
   -- print the block infos
-  liftIO $ Curses.mvWAddStr Curses.stdScr 22 13 $ show maybeBlock
+  mvAddStr 22 13 $ show maybeBlock
 
   liftIO $ Curses.refresh
 
   where 
     mvAddCh :: (MonadIO m) => Int -> Int -> ChType -> m ()
     mvAddCh col row c = liftIO $ Curses.mvAddCh col row c
+
+    mvAddStr :: (MonadIO m) => Int -> Int -> String -> m ()
+    mvAddStr col row s = liftIO $ Curses.mvWAddStr Curses.stdScr col row s
