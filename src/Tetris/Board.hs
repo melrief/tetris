@@ -7,99 +7,23 @@ module Tetris.Board where
 
 import Control.Lens
 import Control.Monad ((>>=))
-import Debug.Trace
 import Data.Bool
+import Data.Maybe
 import Data.Eq
-import Data.Function ((.),($))
+import Data.Function (($))
 import Data.Functor (fmap)
 import Data.Int
-import Data.List ((++))
 import qualified Data.List as List
-import Data.Maybe
-import Data.Ord (Ord,(>=),(<=))
 import Data.Set
 import GHC.Num
 import GHC.Show
 import Tetris.Block.Dir
 import Prelude (undefined)
 
-
-data Column = Zero | One | Two | Three | Four | Five | Six | Seven | Eight | Nine
-  deriving (Eq,Ord)
-
-allColumns :: [Column]
-allColumns = [Zero,One,Two,Three,Four,Five,Six,Seven,Eight,Nine]
-
-data Row = Digit Column | Ten Column | Twenty | TwentyOne
-  deriving (Eq,Ord)
-
-allRows :: [Row]
-allRows = Digit `fmap` allColumns ++ Ten `fmap` allColumns ++ [Twenty,TwentyOne]
-
-class IntSubset i where
-  toInt :: i -> Int
-  fromInt :: Int -> Maybe i
-
-  fromTo :: i -> i -> [i]
-  fromTo x y = catMaybes $ fmap fromInt [toInt x..toInt y]
-
-  succ,pred :: i -> Maybe i
-  succ = fromInt . (\x -> x + 1) . toInt
-  pred = fromInt . (\x -> x - 1) . toInt
-
-instance IntSubset Column where
-  toInt Zero  = 0
-  toInt One   = 1
-  toInt Two   = 2
-  toInt Three = 3
-  toInt Four  = 4
-  toInt Five  = 5
-  toInt Six   = 6
-  toInt Seven = 7
-  toInt Eight = 8
-  toInt Nine  = 9
-
-  fromInt 0 = Just Zero
-  fromInt 1 = Just One
-  fromInt 2 = Just Two
-  fromInt 3 = Just Three
-  fromInt 4 = Just Four
-  fromInt 5 = Just Five
-  fromInt 6 = Just Six
-  fromInt 7 = Just Seven
-  fromInt 8 = Just Eight
-  fromInt 9 = Just Nine
-  fromInt _ = Nothing
-
-instance IntSubset Row where
-  toInt (Digit c) = toInt c
-  toInt (Ten   c) = 10 + toInt c
-  toInt Twenty    = 20
-  toInt TwentyOne = 21
-
-  fromInt i | i >=  0 && i <=  9 = Digit `fmap` (fromInt i     ::Maybe Column)
-            | i >= 10 && i <= 19 = Ten   `fmap` (fromInt (i-10)::Maybe Column)
-            | i == 20           = Just Twenty
-            | i == 21           = Just TwentyOne
-            | otherwise        = Nothing
+import Tetris.Coord
 
 
-instance Show Column where show = show . toInt
-instance Show Row    where show = show . toInt
-
-
-type Coord = (Row,Column)
-
-succRow,predRow,succColumn,predColumn :: Coord -> Maybe Coord
-succRow    (r,c) = (,c) `fmap` succ r
-predRow    (r,c) = (,c) `fmap` pred r
-succColumn (r,c) = (r,) `fmap` succ c
-predColumn (r,c) = (r,) `fmap` pred c
-
---class DirTo d from to where
---  type Ctx d from to :: Constraint
---  toF :: Ctx d from to => d -> from -> to
-
+-- | Orientation in the board, used to move in it
 data Orientation = North | South | East | West
   deriving (Eq,Show)
 
@@ -165,6 +89,7 @@ rotationToShift Clockwise   = clockwiseHeadShift
 rotationToShift Counterwise = counterwiseHeadShift
 
 
+-- | The board is a Set that contains occupied blocks
 type Board = Set Coord
 
 

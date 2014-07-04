@@ -14,6 +14,7 @@ import           System.Random
 import           Tetris.Block
 import           Tetris.Block.Shape
 import           Tetris.Board
+import           Tetris.Coord
 
 import           Prelude hiding (Left,Right)
 

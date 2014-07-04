@@ -14,6 +14,7 @@ import           Prelude hiding (Left,Right)
 import           System.Random
 
 import           Tetris.Board
+import           Tetris.Coord
 import           Tetris.Game
 
 
@@ -120,10 +121,10 @@ gameLoop = do
 
   -- if the reason for ending the program is "game over", then  print it else
   -- just exit
-  isGameOver <- lift (use gameOver)
+  gameIsOver <- lift (use gameOver)
 
   -- print game over and wait for user input before exiting
-  when isGameOver $ void $ liftIO $ do
+  when gameIsOver $ void $ liftIO $ do
     Curses.mvWAddStr Curses.stdScr  9 0 "$$$$$$$$$$$$"
     Curses.mvWAddStr Curses.stdScr 10 0 "  Game Over "
     Curses.mvWAddStr Curses.stdScr 11 0 "$$$$$$$$$$$$"
@@ -172,8 +173,8 @@ processInputKey :: (Functor m,Monad m) => Maybe Key -> TetrisM m ActionResult
 processInputKey (Just KeyLeft)       = toActionResult' $ tryToMoveCurrBlock Left
 processInputKey (Just KeyRight)      = toActionResult' $ tryToMoveCurrBlock Right
 processInputKey (Just KeyDown)       = toActionResult' $ tryToMoveCurrBlock Down
-processInputKey (Just (KeyChar 'z')) = toActionResult' $ tryToRotateCurrBlock Counterwise
-processInputKey (Just (KeyChar 'x')) = toActionResult' $ tryToRotateCurrBlock Clockwise
+processInputKey (Just (KeyChar 'x')) = toActionResult' $ tryToRotateCurrBlock Counterwise
+processInputKey (Just (KeyChar 'z')) = toActionResult' $ tryToRotateCurrBlock Clockwise
 processInputKey Nothing              = return NoAction
 -- we ignore other keys, add here another key to extend keys handled
 processInputKey _                    = return NoAction
@@ -188,7 +189,7 @@ refreshGui = do
   boardCoords <- lift (use board)
 
   -- print all the board rows with borders
-  forM allRows $ \row -> do
+  forM_ allRows $ \row -> do
     
     let rowI = toInt row
 
@@ -196,7 +197,7 @@ refreshGui = do
     mvAddCh rowI 0 (fromIntegral $ ord '|')
 
     -- board content
-    forM allColumns $ \col -> do
+    forM_ allColumns $ \col -> do
       let c = if (row,col) `member` boardCoords then '#' else '.'
       mvAddCh rowI (toInt col + 1) (fromIntegral $ ord c)
 
