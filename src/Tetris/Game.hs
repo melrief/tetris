@@ -15,6 +15,7 @@ import           Tetris.Block
 import           Tetris.Block.Shape
 import           Tetris.Board
 import           Tetris.Coord
+import           Tetris.Orientation
 
 import           Prelude hiding (Left,Right)
 

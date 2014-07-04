@@ -13,8 +13,8 @@ import qualified UI.HSCurses.CursesHelper as CursesH
 import           Prelude hiding (Left,Right)
 import           System.Random
 
-import           Tetris.Board
 import           Tetris.Coord
+import           Tetris.Orientation
 import           Tetris.Game
 
 

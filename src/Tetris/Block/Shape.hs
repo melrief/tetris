@@ -7,6 +7,7 @@ import Control.Lens
 import Tetris.Block.Dir
 import Tetris.Board
 import Tetris.Coord
+import Tetris.Orientation
 
 
 data Shape = Shape {
