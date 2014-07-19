@@ -5,16 +5,19 @@
 {-# LANGUAGE TupleSections #-}
 module Tetris.Board where
 
+import Control.Exception
 import Control.Lens
 import Control.Monad ((>>=))
 import Data.Bool
 import Data.Maybe
+import Data.Monoid
 import Data.Eq
-import Data.Function (($))
+import Data.Function (($),(.))
 import Data.Functor (fmap)
 import Data.Int
 import qualified Data.List as List
 import Data.Set
+import Data.String
 import GHC.Num
 import GHC.Show
 import Tetris.Block.Dir
@@ -49,10 +52,11 @@ collapseRows :: [Row] -> Board -> Board
 collapseRows []        board = board
 collapseRows uFullRows board = 
   let (i,board',_) = List.foldl' collapseRow (0,board,sFullRows) rowsToChange
-  in case fromInt i of
+  -- i - 1 because, e.g., if all rows must be removed then i == 22 but we need 21 (the maxBound)
+  in case fromInt (i-1) of
        -- this error should never occur because i should always be in the
        -- rows range, if happens then raise error
-       Nothing      -> undefined
+       Nothing      -> throwError $ "The row to erase cannot have number " <> show (i-1)
        -- remove the first rows because they fell below
        Just lastRow -> eraseRows (fromTo (Digit Zero) lastRow) board'
   where 
@@ -78,7 +82,7 @@ collapseRows uFullRows board =
       in case maybeRowToReplace of
            -- should not happen because we start from a row to replace,
            -- if happens then raise error
-           Nothing           -> undefined
+           Nothing           -> throwError $ "The row to replace cannot have number " <> show (i + toInt currRow)
            Just rowToReplace ->
              -- remove the row to replace and then shift the current row
              let cBoard'  = cBoard \\ makeFullRow rowToReplace
@@ -91,3 +95,6 @@ collapseRows uFullRows board =
 
     makeFullRow :: Row -> Set Coord
     makeFullRow row = fromList $ fmap (row,) allColumns
+
+    throwError :: String -> a
+    throwError = throw . ErrorCall

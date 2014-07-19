@@ -205,7 +205,7 @@ refreshGui = do
     mvAddCh rowI 11 (fromIntegral $ ord '|')
 
   -- print the floor
-  forM_ [0..11] $ \col -> mvAddCh 22 col (fromIntegral $ ord '=')
+  forM_ [0..11] $ \col -> mvAddCh 22 col (fromIntegral $ ord '-')
 
 
   -- print the block
@@ -213,7 +213,7 @@ refreshGui = do
   case maybeBlock of
     Nothing       -> return ()
     Just    block -> forM_ (blockCoords' block) $ \(row,col) -> 
-                       mvAddCh (toInt row) (toInt col+1) (fromIntegral $ ord '+')
+                       mvAddCh (toInt row) (toInt col+1) (fromIntegral $ ord 'o')
 
 
   -- print the speed

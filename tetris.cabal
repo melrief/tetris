@@ -18,30 +18,34 @@ Executable tetris
                   , Stream
                   , transformers
 
---library
---  hs-source-dirs: src
---  exposed-modules: Tetris.Block
---  ghc-options: -Wall 
---  default-language: Haskell2010
---  build-depends: base
---               , containers
---               , lens
---               , ListZipper
---
---test-suite spec
---  type: exitcode-stdio-1.0
---  hs-source-dirs: test
---  main-is: Spec.hs
---  ghc-options: -Wall
---  default-language: Haskell2010
---  build-depends:    array
---                  , base
---                  , containers
---                  , hscurses
---                  , hspec
---                  , lens
---                  , ListZipper
---                  , mtl
---                  , random
---                  , tetris
---                  , transformers
+library
+  hs-source-dirs: src
+  exposed-modules: Tetris.Board
+                 , Tetris.Coord
+  ghc-options: -Wall 
+  default-language: Haskell2010
+  build-depends: base
+               , containers
+               , ghc-prim
+               , lens
+
+test-suite spec
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Spec.hs
+  ghc-options: -Wall
+  default-language: Haskell2010
+  build-depends:    array
+                  , base
+                  , containers
+                  , hscurses
+                  , hspec
+                  , ghc-prim
+                  , hscurses
+                  , lens
+                  , mtl
+                  , QuickCheck
+                  , random
+                  , Stream
+                  , tetris
+                  , transformers

@@ -10,6 +10,7 @@ import Data.Int
 import Data.List ((++))
 import Data.Maybe
 import Data.Ord
+import GHC.Enum (Bounded,minBound,maxBound)
 import GHC.Num
 import GHC.Show
 
@@ -17,11 +18,19 @@ import GHC.Show
 data Column = Zero | One | Two | Three | Four | Five | Six | Seven | Eight | Nine
   deriving (Eq,Ord)
 
+instance Bounded Column where
+  minBound = Zero
+  maxBound = Nine
+
 allColumns :: [Column]
 allColumns = [Zero,One,Two,Three,Four,Five,Six,Seven,Eight,Nine]
 
 data Row = Digit Column | Ten Column | Twenty | TwentyOne
   deriving (Eq,Ord)
+
+instance Bounded Row where
+  minBound = Digit minBound
+  maxBound = TwentyOne
 
 allRows :: [Row]
 allRows = Digit `fmap` allColumns ++ Ten `fmap` allColumns ++ [Twenty,TwentyOne]
