@@ -26,7 +26,7 @@ import Prelude (undefined)
 import Tetris.Coord
 
 
--- | The board is a Set that contains occupied blocks
+-- | The board is a Set that contains occupied coords
 type Board = Set Coord
 
 
@@ -96,5 +96,7 @@ collapseRows uFullRows board =
     makeFullRow :: Row -> Set Coord
     makeFullRow row = fromList $ fmap (row,) allColumns
 
+    -- this will be used for "impossible" state errors to exit asap from the
+    -- program
     throwError :: String -> a
     throwError = throw . ErrorCall
