@@ -51,9 +51,9 @@ runGame = liftIO (randomRIO (0,maxBound)) >>= runGameWithSeed
 -- run the game using a given seed
 runGameWithSeed :: (Functor m,MonadIO m) => Int -> m ()
 runGameWithSeed seed = do
-  liftIO $ CursesH.start
+  liftIO CursesH.start
   _ <- runStateT (runStateT gameLoop initGuiState) (initGame seed)
-  liftIO $ CursesH.end
+  liftIO CursesH.end
 
 
 -- the result of a user input action
@@ -143,8 +143,8 @@ updateSpeedAndScore rs = do
                       3 -> 5
                       4 -> 9
                       _ -> undefined -- this should not happen
-  when (pointsToAdd > 0) $ do
-    modify $ over score (\x -> x + pointsToAdd)
+  when (pointsToAdd > 0) $
+    modify $ over score (+ pointsToAdd)
            . over speed (\x -> max 1 (x - pointsToAdd))
 
 -- the key used to manually exit the game
@@ -225,7 +225,7 @@ refreshGui = do
   -- print the block infos
   mvAddStr 22 13 $ show maybeBlock
 
-  liftIO $ Curses.refresh
+  liftIO Curses.refresh
 
   where 
     mvAddCh :: (MonadIO m) => Int -> Int -> ChType -> m ()

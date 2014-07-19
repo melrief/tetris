@@ -5,7 +5,6 @@ module Tetris.Block.Shape where
 import Control.Lens
 
 import Tetris.Block.Dir
-import Tetris.Board
 import Tetris.Coord
 import Tetris.Orientation
 
@@ -20,7 +19,7 @@ data Shape = Shape {
 $(makeLenses ''Shape)
 
 instance Show Shape where
-  show s = _name s -- a Shape is represented by the name
+  show = _name -- a Shape is represented by the name
 
 mkShape :: (DirToFun d1 Orientation Coord
            ,DirToFun d2 Orientation Coord

@@ -5,23 +5,21 @@
 {-# LANGUAGE TupleSections #-}
 module Tetris.Board where
 
-import Control.Exception
 import Control.Lens
-import Control.Monad ((>>=))
 import Data.Bool
 import Data.Maybe
 import Data.Monoid
 import Data.Eq
-import Data.Function (($),(.))
+import Data.Function (($),flip)
 import Data.Functor (fmap)
 import Data.Int
+import Data.Ord (compare)
 import qualified Data.List as List
 import Data.Set
 import Data.String
 import GHC.Num
 import GHC.Show
-import Tetris.Block.Dir
-import Prelude (undefined)
+import Prelude (error)
 
 import Tetris.Coord
 
@@ -60,7 +58,7 @@ collapseRows uFullRows board =
        -- remove the first rows because they fell below
        Just lastRow -> eraseRows (fromTo (Digit Zero) lastRow) board'
   where 
-    sFullRows = List.reverse $ List.sort $ uFullRows
+    sFullRows = List.sortBy (flip compare) uFullRows -- reverse sorting
     rowsToChange = List.reverse $ fromTo (Digit Zero) $ List.head sFullRows
 
     collapseRow :: (Int,Board,[Row]) -> Row -> (Int,Board,[Row])
@@ -99,4 +97,4 @@ collapseRows uFullRows board =
     -- this will be used for "impossible" state errors to exit asap from the
     -- program
     throwError :: String -> a
-    throwError = throw . ErrorCall
+    throwError = error 

@@ -44,7 +44,7 @@ class IntSubset i where
   fromTo x y = catMaybes $ fmap fromInt [toInt x..toInt y]
 
   succ,pred :: i -> Maybe i
-  succ = fromInt . (\x -> x + 1) . toInt
+  succ = fromInt . (+ 1) . toInt
   pred = fromInt . (\x -> x - 1) . toInt
 
 instance IntSubset Column where

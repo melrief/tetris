@@ -4,6 +4,7 @@ module Tetris.Game where
 import           Control.Lens hiding (index)
 import           Control.Monad.State
 import qualified Data.List   as List
+import           Data.Maybe (fromMaybe)
 import           Data.Stream (Stream(..))
 import qualified Data.Set    as Set
 import           Data.Set (member,union)
@@ -50,14 +51,12 @@ initPosAndDir initShape = CB {
 -- convert the current block into a list of coordinates if possible (if the
 -- resulting coords are empty)
 blockCoords :: CurrentBlock -> Maybe [Coord]
-blockCoords cb = (view (shape.toCoords) cb) (view orien cb) (view pos cb)
+blockCoords cb = view (shape.toCoords) cb (view orien cb) (view pos cb)
 
 -- same as blockCoords but return an empty list if the resulting coords are
 -- not empty
 blockCoords' :: CurrentBlock -> [Coord]
-blockCoords' cb = case blockCoords cb of
-                    Nothing     -> []
-                    Just coords -> coords
+blockCoords' = fromMaybe [] . blockCoords
 
 -- the current state of the game
 data Game = Game {
@@ -110,7 +109,7 @@ tryToRotateCurrBlock rotation = do
       case maybeNewPos of
         Nothing     -> return CannotRotate
         Just newPos -> do
-          let b' = set orien newOrien $ set pos newPos $ b
+          let b' = set orien newOrien $ set pos newPos b
           case blockCoords b' of
             -- Cannot rotate because by rotating the block exits the board
             Nothing     -> return CannotRotate
@@ -135,7 +134,7 @@ shouldMerge :: MoveDirection -> Bool
 shouldMerge Down = True
 shouldMerge _    = False
 
-moveDirToFun :: MoveDirection -> (Coord -> Maybe Coord)
+moveDirToFun :: MoveDirection -> Coord -> Maybe Coord
 moveDirToFun Left  = predColumn
 moveDirToFun Right = succColumn
 moveDirToFun Down  = succRow
